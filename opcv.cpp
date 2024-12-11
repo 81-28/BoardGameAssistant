@@ -1,98 +1,49 @@
-﻿#include <opencv2/opencv.hpp>
+﻿// ConsoleApplication_test.cpp : このファイルには 'main' 関数が含まれています。プログラム実行の開始と終了がそこで行われます。
+//
+
+#include <opencv2/opencv.hpp>
 #include <iostream>
 
-void detectAndOverlayOthelloBoard(cv::Mat& frame) {
-    cv::Mat gray, edges;
-    // グレースケール化とエッジ検出
-    cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
-    cv::GaussianBlur(gray, gray, cv::Size(5, 5), 0);
-    cv::Canny(gray, edges, 50, 150);
 
-    std::vector<std::vector<cv::Point>> contours;
-    cv::findContours(edges, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-
-    std::vector<cv::Point> boardContour;
-    for (const auto& contour : contours) {
-        std::vector<cv::Point> approx;
-        cv::approxPolyDP(contour, approx, 0.02 * cv::arcLength(contour, true), true);
-        if (approx.size() == 4) {
-            double area = cv::contourArea(approx);
-            if (area > 1000) { // 十分大きな四角形だけを対象
-                boardContour = approx;
-                break;
-            }
-        }
-    }
-
-    if (boardContour.empty()) {
-        std::cerr << "オセロ盤が検出されませんでした！" << std::endl;
-        return;
-    }
-
-    // 盤面を正面から見たように変換
-    std::vector<cv::Point2f> srcPoints, dstPoints;
-    for (const auto& point : boardContour) {
-        srcPoints.push_back(cv::Point2f(point.x, point.y));
-    }
-    dstPoints = { {0, 0}, {400, 0}, {400, 400}, {0, 400} };
-
-    cv::Mat transformMatrix = cv::getPerspectiveTransform(srcPoints, dstPoints);
-    cv::Mat warpedBoard;
-    cv::warpPerspective(frame, warpedBoard, transformMatrix, cv::Size(400, 400));
-
-    // 石の色を解析して元画像に重ねる
-    int rows = 8, cols = 8;
-    int cellWidth = warpedBoard.cols / cols;
-    int cellHeight = warpedBoard.rows / rows;
-
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
-            cv::Rect cell(j * cellWidth, i * cellHeight, cellWidth, cellHeight);
-            cv::Mat cellROI = warpedBoard(cell);
-
-            // 平均色で石の判定
-            cv::Scalar avgColor = cv::mean(cellROI);
-            cv::Point2f topLeft(j * cellWidth, i * cellHeight);
-            cv::Point2f topLeftWarped;
-            cv::perspectiveTransform(std::vector<cv::Point2f>{topLeft}, std::vector<cv::Point2f>{topLeftWarped}, transformMatrix.inv());
-
-            cv::Point center(static_cast<int>(topLeftWarped.x + cellWidth / 2), static_cast<int>(topLeftWarped.y + cellHeight / 2));
-
-            if (avgColor[0] < 100) {
-                cv::circle(frame, center, cellWidth / 4, cv::Scalar(0, 0, 0), -1); // 黒石
-            }
-            else if (avgColor[0] > 150) {
-                cv::circle(frame, center, cellWidth / 4, cv::Scalar(255, 255, 255), -1); // 白石
-            }
-        }
-    }
-
-    // 枠線を元の画像に描画
-    for (size_t i = 0; i < boardContour.size(); ++i) {
-        cv::line(frame, boardContour[i], boardContour[(i + 1) % boardContour.size()], cv::Scalar(0, 255, 0), 2);
-    }
-}
 
 int main() {
-    cv::VideoCapture cap(1);
-    if (!cap.isOpened()) {
-        std::cerr << "カメラが開けませんでした！" << std::endl;
+    // 画像の読み込み
+    cv::Mat frame = cv::imread("C:\\Users\\agugu\\aaa.png");
+    if (frame.empty()) {
+        std::cerr << "画像が見つかりません！" << std::endl;
         return -1;
     }
 
-    while (true) {
-        cv::Mat frame;
-        cap >> frame;
-        if (frame.empty()) break;
+    // HSV変換
+    cv::Mat hsvImage;
+    cv::cvtColor(frame, hsvImage, cv::COLOR_BGR2HSV);
 
-        detectAndOverlayOthelloBoard(frame);
+    // 範囲1: lower と upper
+    cv::Scalar lower1(45, 89, 30);
+    cv::Scalar upper1(90, 255, 255);
+    cv::Mat green1;
+    cv::inRange(hsvImage, lower1, upper1, green1);
 
-        cv::imshow("Othello Board Detection", frame);
-        if (cv::waitKey(30) == 27) break; // ESCキーで終了
-    }
+    // 範囲2: lower と upper
+    cv::Scalar lower2(45, 64, 89);
+    cv::Scalar upper2(90, 255, 255);
+    cv::Mat green2;
+    cv::inRange(hsvImage, lower2, upper2, green2);
+
+    // 論理ORを使用してマスクを統合
+    cv::Mat green;
+    cv::bitwise_or(green1, green2, green);
+
+    // 結果の表示
+    cv::imshow("Original Image", frame);
+    cv::imshow("Green Mask", green);
+
+    // キー入力待ち
+    cv::waitKey(0);
 
     return 0;
 }
+
 
 
 #include <opencv2/core/version.hpp>
