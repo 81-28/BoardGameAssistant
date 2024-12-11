@@ -1,7 +1,7 @@
 ﻿#include <opencv2/opencv.hpp>
 #include <iostream>
 
-void detectAndOverlayOthelloBoard(cv::Mat& frame) {
+void detectAndOverlayOthelloGrid(cv::Mat& frame) {
     cv::Mat gray, edges;
     // グレースケール化とエッジ検出
     cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
@@ -40,7 +40,7 @@ void detectAndOverlayOthelloBoard(cv::Mat& frame) {
     cv::Mat warpedBoard;
     cv::warpPerspective(frame, warpedBoard, transformMatrix, cv::Size(400, 400));
 
-    // 石の色を解析して元画像に重ねる
+    // 8×8 のグリッドを解析
     int rows = 8, cols = 8;
     int cellWidth = warpedBoard.cols / cols;
     int cellHeight = warpedBoard.rows / rows;
@@ -52,17 +52,25 @@ void detectAndOverlayOthelloBoard(cv::Mat& frame) {
 
             // 平均色で石の判定
             cv::Scalar avgColor = cv::mean(cellROI);
+
+            // 透視変換を逆に適用して元画像に描画
             cv::Point2f topLeft(j * cellWidth, i * cellHeight);
-            cv::Point2f topLeftWarped;
-            cv::perspectiveTransform(std::vector<cv::Point2f>{topLeft}, std::vector<cv::Point2f>{topLeftWarped}, transformMatrix.inv());
+            cv::Point2f bottomRight((j + 1) * cellWidth, (i + 1) * cellHeight);
+            std::vector<cv::Point2f> src = { topLeft, bottomRight };
+            std::vector<cv::Point2f> dst;
+            cv::perspectiveTransform(src, dst, transformMatrix.inv());
 
-            cv::Point center(static_cast<int>(topLeftWarped.x + cellWidth / 2), static_cast<int>(topLeftWarped.y + cellHeight / 2));
+            cv::Rect overlayRect(dst[0], dst[1]);
 
+            // 色を元画像に重ねる
             if (avgColor[0] < 100) {
-                cv::circle(frame, center, cellWidth / 4, cv::Scalar(0, 0, 0), -1); // 黒石
+                cv::rectangle(frame, overlayRect, cv::Scalar(0, 0, 0), -1); // 黒石
             }
             else if (avgColor[0] > 150) {
-                cv::circle(frame, center, cellWidth / 4, cv::Scalar(255, 255, 255), -1); // 白石
+                cv::rectangle(frame, overlayRect, cv::Scalar(255, 255, 255), -1); // 白石
+            }
+            else {
+                cv::rectangle(frame, overlayRect, cv::Scalar(128, 128, 128), 2); // 空マス
             }
         }
     }
@@ -85,15 +93,14 @@ int main() {
         cap >> frame;
         if (frame.empty()) break;
 
-        detectAndOverlayOthelloBoard(frame);
+        detectAndOverlayOthelloGrid(frame);
 
-        cv::imshow("Othello Board Detection", frame);
+        cv::imshow("Othello Grid Detection", frame);
         if (cv::waitKey(30) == 27) break; // ESCキーで終了
     }
 
     return 0;
 }
-
 
 #include <opencv2/core/version.hpp>
 #ifdef _DEBUG
