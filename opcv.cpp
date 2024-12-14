@@ -5,7 +5,6 @@
 #include <iostream>
 
 
-
 int main() {
     // 画像の読み込み
     cv::Mat frame = cv::imread("C:\\Users\\agugu\\aaa.png");
