@@ -1,16 +1,43 @@
 ﻿#include <opencv2/opencv.hpp>
 #include <iostream>
 
-void detectAndOverlayOthelloBoard(cv::Mat& frame) {
-    cv::Mat gray, edges;
-    // グレースケール化とエッジ検出
-    cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
-    cv::GaussianBlur(gray, gray, cv::Size(5, 5), 0);
-    cv::Canny(gray, edges, 50, 150);
+// 画像の圧縮倍率
+const double mag = 5;
+// 緑とする範囲(HSV)
+const cv::Scalar lowerGreen(35, 60, 60), upperGreen(90, 255, 255);
 
+// 緑色か確かめる関数
+bool isGreen(const cv::Scalar& color) {
+    cv::Mat colorMat(1, 1, CV_8UC3, cv::Scalar(color[0], color[1], color[2]));
+    cv::Mat hsv;
+    cv::cvtColor(colorMat, hsv, cv::COLOR_BGR2HSV);
+
+    cv::Vec3b hsvColor = hsv.at<cv::Vec3b>(0, 0);
+    int h = hsvColor[0], s = hsvColor[1], v = hsvColor[2];
+
+    // 緑のHSV範囲を指定
+    return (lowerGreen[0] <= h && h <= upperGreen[0]) && (lowerGreen[1] <= s && s <= upperGreen[1]) && (lowerGreen[2] <= v && v <= upperGreen[2]);
+}
+
+// 盤面の検出と解析を行う関数
+void detectAndAnalyzeOthelloBoard(cv::Mat& frame) {
+    cv::Mat comp, blur, hsv, mask, edges;
+
+    // 画像を縮小し、平滑化
+    cv::resize(frame, comp, cv::Size(), 1/mag, 1/mag);
+    cv::GaussianBlur(comp, blur, cv::Size(15, 15), 0.0);
+    // HSVに変換
+    cv::cvtColor(blur, hsv, cv::COLOR_BGR2HSV);
+    // 緑色の検出
+    cv::inRange(hsv, lowerGreen, upperGreen, mask);
+    cv::imshow("mask", mask);
+    // エッジ検出
+    cv::Canny(mask, edges, 50, 150);
+    cv::imshow("edge", edges);
+
+    // 四角形を検出
     std::vector<std::vector<cv::Point>> contours;
     cv::findContours(edges, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-
     std::vector<cv::Point> boardContour;
     for (const auto& contour : contours) {
         std::vector<cv::Point> approx;
@@ -23,7 +50,6 @@ void detectAndOverlayOthelloBoard(cv::Mat& frame) {
             }
         }
     }
-
     if (boardContour.empty()) {
         std::cerr << "オセロ盤が検出されませんでした！" << std::endl;
         return;
@@ -32,45 +58,39 @@ void detectAndOverlayOthelloBoard(cv::Mat& frame) {
     // 盤面を正面から見たように変換
     std::vector<cv::Point2f> srcPoints, dstPoints;
     for (const auto& point : boardContour) {
-        srcPoints.push_back(cv::Point2f(point.x, point.y));
+        srcPoints.push_back(cv::Point2f(point.x * mag, point.y * mag));
     }
     dstPoints = { {0, 0}, {400, 0}, {400, 400}, {0, 400} };
-
     cv::Mat transformMatrix = cv::getPerspectiveTransform(srcPoints, dstPoints);
     cv::Mat warpedBoard;
     cv::warpPerspective(frame, warpedBoard, transformMatrix, cv::Size(400, 400));
 
-    // 石の色を解析して元画像に重ねる
-    int rows = 8, cols = 8;
-    int cellWidth = warpedBoard.cols / cols;
-    int cellHeight = warpedBoard.rows / rows;
-
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
-            cv::Rect cell(j * cellWidth, i * cellHeight, cellWidth, cellHeight);
-            cv::Mat cellROI = warpedBoard(cell);
-
-            // 平均色で石の判定
-            cv::Scalar avgColor = cv::mean(cellROI);
-            cv::Point2f topLeft(j * cellWidth, i * cellHeight);
-            cv::Point2f topLeftWarped;
-            cv::perspectiveTransform(std::vector<cv::Point2f>{topLeft}, std::vector<cv::Point2f>{topLeftWarped}, transformMatrix.inv());
-
-            cv::Point center(static_cast<int>(topLeftWarped.x + cellWidth / 2), static_cast<int>(topLeftWarped.y + cellHeight / 2));
-
-            if (avgColor[0] < 100) {
-                cv::circle(frame, center, cellWidth / 4, cv::Scalar(0, 0, 0), -1); // 黒石
-            }
-            else if (avgColor[0] > 150) {
-                cv::circle(frame, center, cellWidth / 4, cv::Scalar(255, 255, 255), -1); // 白石
-            }
-        }
+    // 盤面を解析したい
+    // 画像を平滑化
+    cv::GaussianBlur(warpedBoard, blur, cv::Size(31, 31), 0.0);
+    cv::imshow("blur2", blur);
+    // HSVに変換
+    cv::cvtColor(blur, hsv, cv::COLOR_BGR2HSV);
+    // 緑色の検出
+    cv::inRange(hsv, lowerGreen, upperGreen, mask);
+    cv::imshow("mask2", mask);
+    //// エッジ検出
+    cv::Canny(mask, edges, 50, 150);
+    cv::imshow("edge2", edges);
+    std::vector<cv::Vec3f> circles;
+    cv::HoughCircles(edges, circles, cv::HOUGH_GRADIENT, 1, 50, 100, 20, 1, 100);
+    for (const cv::Vec3f& circle : circles) {
+        cv::Point center(cvRound(circle[0]), cvRound(circle[1]));
+        int radius = cvRound(circle[2]);
+        cv::circle(warpedBoard, center, radius/10, cv::Scalar(0, 0, 255), 2);
     }
 
     // 枠線を元の画像に描画
     for (size_t i = 0; i < boardContour.size(); ++i) {
-        cv::line(frame, boardContour[i], boardContour[(i + 1) % boardContour.size()], cv::Scalar(0, 255, 0), 2);
+        cv::line(frame, boardContour[i] * mag, boardContour[(i + 1) % boardContour.size()] * mag, cv::Scalar(0, 255, 0), 2);
     }
+    // 切り取ったオセロ版を描画
+    cv::imshow("square", warpedBoard);
 }
 
 int main() {
@@ -85,7 +105,7 @@ int main() {
         cap >> frame;
         if (frame.empty()) break;
 
-        detectAndOverlayOthelloBoard(frame);
+        detectAndAnalyzeOthelloBoard(frame);
 
         cv::imshow("Othello Board Detection", frame);
         if (cv::waitKey(30) == 27) break; // ESCキーで終了
@@ -93,7 +113,6 @@ int main() {
 
     return 0;
 }
-
 
 #include <opencv2/core/version.hpp>
 #ifdef _DEBUG
