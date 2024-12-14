@@ -7,7 +7,9 @@
 // 画像の圧縮倍率
 const double mag = 5;
 // 緑とする範囲(HSV)
-const cv::Scalar lowerGreen(35, 60, 60), upperGreen(90, 255, 255);
+const cv::Scalar lowerGreen(35, 60, 100), upperGreen(90, 255, 255);
+// 切り取った正方形の一辺
+const int len = 80;
 
 // 緑色か確かめる関数
 bool isGreen(const cv::Scalar& color) {
@@ -25,6 +27,7 @@ bool isGreen(const cv::Scalar& color) {
 // 盤面の検出と解析を行う関数
 void detectAndAnalyzeOthelloBoard(cv::Mat& frame) {
     cv::Mat comp, blur, hsv, mask, edges;
+
 
     // 画像を縮小し、平滑化
     cv::resize(frame, comp, cv::Size(), 1/mag, 1/mag);
@@ -63,14 +66,14 @@ void detectAndAnalyzeOthelloBoard(cv::Mat& frame) {
     for (const auto& point : boardContour) {
         srcPoints.push_back(cv::Point2f(point.x * mag, point.y * mag));
     }
-    dstPoints = { {0, 0}, {400, 0}, {400, 400}, {0, 400} };
+    dstPoints = { {0, 0}, {len, 0}, {len, len}, {0, len} };
     cv::Mat transformMatrix = cv::getPerspectiveTransform(srcPoints, dstPoints);
     cv::Mat warpedBoard;
-    cv::warpPerspective(frame, warpedBoard, transformMatrix, cv::Size(400, 400));
+    cv::warpPerspective(frame, warpedBoard, transformMatrix, cv::Size(len, len));
 
     // 盤面を解析したい
     // 画像を平滑化
-    cv::GaussianBlur(warpedBoard, blur, cv::Size(31, 31), 0.0);
+    cv::GaussianBlur(warpedBoard, blur, cv::Size(7, 7), 0.0);
     cv::imshow("blur2", blur);
     // HSVに変換
     cv::cvtColor(blur, hsv, cv::COLOR_BGR2HSV);
@@ -78,59 +81,85 @@ void detectAndAnalyzeOthelloBoard(cv::Mat& frame) {
     cv::inRange(hsv, lowerGreen, upperGreen, mask);
     cv::imshow("mask2", mask);
     //// エッジ検出
-    cv::Canny(mask, edges, 50, 150);
-    cv::imshow("edge2", edges);
-    std::vector<cv::Vec3f> circles;
-    cv::HoughCircles(edges, circles, cv::HOUGH_GRADIENT, 1, 50, 100, 20, 1, 100);
-    for (const cv::Vec3f& circle : circles) {
-        cv::Point center(cvRound(circle[0]), cvRound(circle[1]));
-        int radius = cvRound(circle[2]);
-        cv::circle(warpedBoard, center, radius/10, cv::Scalar(0, 0, 255), 2);
+    // cv::Canny(mask, edges, 50, 150);
+    // cv::imshow("edge2", edges);
+
+    cv::Mat gray;
+    cv::bitwise_not(mask, gray);
+
+    // 距離変換を適用して石の中心を検出
+    cv::Mat dist;
+    cv::distanceTransform(gray, dist, cv::DIST_L2, 5);
+    cv::normalize(dist, dist, 0, 1.0, cv::NORM_MINMAX);
+    cv::imshow("dist", dist);
+
+    // 距離値が極大となる点を検出
+    cv::Mat peaks;
+    cv::threshold(dist, peaks, 0.6, 1.0, cv::THRESH_BINARY);
+    cv::imshow("peak", peaks);
+    peaks.convertTo(peaks, CV_8U);
+
+    std::vector<std::vector<cv::Point>> peakContours;
+    cv::findContours(peaks, peakContours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+    cv::Mat adp;
+    cv::cvtColor(warpedBoard, gray, cv::COLOR_BGR2GRAY);
+    cv::adaptiveThreshold(gray, adp, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY, 191, -20);
+    cv::imshow("adp", adp);
+
+    for (const auto& contour : peakContours) {
+        // 各極大点の重心を計算
+        cv::Moments m = cv::moments(contour);
+        if (m.m00 > 0) {
+            int cx = static_cast<int>(m.m10 / m.m00);
+            int cy = static_cast<int>(m.m01 / m.m00);
+
+            // 重心を円として描画
+            cv::Rect cellPos(cx - len / 32, cy - len / 32, len / 16, len / 16);
+            // cellPosが画像範囲内に収まっているか確認
+            if (cellPos.x >= 0 && cellPos.y >= 0 && cellPos.x + cellPos.width <= warpedBoard.cols && cellPos.y + cellPos.height <= warpedBoard.rows) {
+                cv::Mat cell = warpedBoard(cellPos);
+                cv::Scalar color = cv::mean(cell);
+                cv::circle(warpedBoard, cv::Point(cx, cy), 1, (color[0] > 150) ? cv::Scalar(0, 0, 255) : cv::Scalar(255, 0, 0), -1);
+            } else {
+                std::cerr << "cellPos is out of bounds: " << cellPos << std::endl;
+            }
+        }
     }
+
+
 
     // 枠線を元の画像に描画
     for (size_t i = 0; i < boardContour.size(); ++i) {
         cv::line(frame, boardContour[i] * mag, boardContour[(i + 1) % boardContour.size()] * mag, cv::Scalar(0, 255, 0), 2);
     }
     // 切り取ったオセロ版を描画
+    cv::resize(warpedBoard, warpedBoard, cv::Size(), 5, 5);
     cv::imshow("square", warpedBoard);
 }
 
 int main() {
-    // 画像の読み込み
-    cv::Mat frame = cv::imread("C:\\Users\\agugu\\aaa.png");
-    if (frame.empty()) {
-        std::cerr << "画像が見つかりません！" << std::endl;
+    cv::VideoCapture cap(1);
+    if (!cap.isOpened()) {
+        std::cerr << "カメラが開けませんでした！" << std::endl;
         return -1;
     }
 
-    // HSV変換
-    cv::Mat hsvImage;
-    cv::cvtColor(frame, hsvImage, cv::COLOR_BGR2HSV);
+    // cv::Mat img(600, 600, CV_8UC3);
+    // img = cv::Scalar(255, 255, 255);
+    // cv::rectangle(img, cv::Point(0, 0), cv::Point(600, 600), cv::Scalar(0, 0, 255), 8, cv::LINE_4);
 
-    // 範囲1: lower と upper
-    cv::Scalar lower1(45, 89, 30);
-    cv::Scalar upper1(90, 255, 255);
-    cv::Mat green1;
-    cv::inRange(hsvImage, lower1, upper1, green1);
+    while (true) {
+        cv::Mat frame;
+        cap >> frame;
+        if (frame.empty()) break;
         detectAndAnalyzeOthelloBoard(frame);
+        cv::imshow("Othello Board Detection", frame);
 
-    // 範囲2: lower と upper
-    cv::Scalar lower2(45, 64, 89);
-    cv::Scalar upper2(90, 255, 255);
-    cv::Mat green2;
-    cv::inRange(hsvImage, lower2, upper2, green2);
+        // cv::imshow("aa", img);
 
-    // 論理ORを使用してマスクを統合
-    cv::Mat green;
-    cv::bitwise_or(green1, green2, green);
-
-    // 結果の表示
-    cv::imshow("Original Image", frame);
-    cv::imshow("Green Mask", green);
-
-    // キー入力待ち
-    cv::waitKey(0);
+        if (cv::waitKey(30) == 27) break; // ESCキーで終了
+    }
 
     return 0;
 }
