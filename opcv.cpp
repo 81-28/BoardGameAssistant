@@ -9,9 +9,80 @@ const double mag = 5;
 // 色の範囲(HSV)
 const cv::Scalar lowerGreen(35, 60, 100), upperGreen(90, 255, 255);
 const cv::Scalar lowerBlack(0, 0, 0), upperBlack(255, 191, 127);
-const cv::Scalar lowerWhite(0, 0, 191), upperWhite(255, 127, 255);
+const cv::Scalar lowerWhite(0, 0, 191), upperWhite(255, 95, 255);
 // 切り取った正方形の一辺
-const int len = 96;
+const int len = 160;
+// 盤面情報の記録 0:無,1:黒,2:白
+std::vector<std::vector<int>> board;
+std::vector<std::vector<int>> moves(8, std::vector<int>(8, 0));
+std::vector<std::pair<int, int>> movePlace;
+const int dx[8] = { 0, 0, 1, -1, 1, -1, 1, -1 };
+const int dy[8] = { 1, -1, 0, 0, 1, -1, -1, 1 };
+
+int player = 1;
+
+bool canFlipDirection(const int& x, const int& y, const int& color, const int& dirX, const int& dirY) {
+    int nx = x + dirX, ny = y + dirY;
+    bool foundOpponent = false;
+
+    while (0 <= nx && nx < 8 && 0 <= ny && ny < 8) {
+        if (!board[nx][ny]) {
+            return false; // 空きマスまたは駒が存在しない場合
+        }
+        if (board[nx][ny] == color) {
+            return foundOpponent; // 自分の駒が見つかった
+        }
+        foundOpponent = true; // 相手の駒を発見
+        nx += dirX;
+        ny += dirY;
+    }
+    return false;
+}
+
+bool canFlip(const int& x, const int& y, const int& color) {
+    for (int i = 0; i < 8; i++) {
+        if (canFlipDirection(x, y, color, dx[i], dy[i])) return true;
+    }
+    return false;
+}
+
+void findMoves(const int& color) {
+    moves = std::vector<std::vector<int>>(8, std::vector<int>(8, 0));
+    movePlace = std::vector<std::pair<int, int>>(0);
+    for (int x = 0; x < 8; x++) {
+        for (int y = 0; y < 8; y++) {
+            if (!board[x][y] && canFlip(x,y,color)) {
+                moves[x][y] = color;
+                movePlace.push_back({ x,y });
+            }
+        }
+    }
+    return;
+}
+
+void checkBoard(std::vector<std::vector<int>>& newBoard) {
+    if (!board.size()) {
+        board = newBoard;
+        findMoves(player);
+        return;
+    }
+    bool canAdvance = false;
+    for (std::pair<int, int> p : movePlace) {
+        if (newBoard[p.first][p.second] == player) {
+            canAdvance = true;
+            break;
+        }
+    }
+    if (canAdvance) {
+        board = newBoard;
+        for (int i = 0; i < 3; i++) {
+            player = 3 - player;
+            findMoves(player);
+            if (movePlace.size()) break;
+        }
+    }
+    return;
+}
 
 // 緑色か確かめる関数
 //bool isGreen(const cv::Scalar& color) {
@@ -33,11 +104,13 @@ void detectAndAnalyzeOthelloBoard(cv::Mat& frame) {
 
     // 画像を縮小し、平滑化
     cv::resize(frame, comp, cv::Size(), 1/mag, 1/mag);
-    cv::GaussianBlur(comp, blur, cv::Size(15, 15), 0.0);
+    cv::GaussianBlur(comp, blur, cv::Size(3, 3), 0.0);
+    //cv::GaussianBlur(comp, blur, cv::Size(15, 15), 0.0);
     // HSVに変換
     cv::cvtColor(blur, hsv, cv::COLOR_BGR2HSV);
     // 緑色の検出
     cv::inRange(hsv, lowerGreen, upperGreen, mask);
+    //cv::GaussianBlur(mask, mask, cv::Size(7, 7), 0.0);
     cv::imshow("mask", mask);
     // エッジ検出
     cv::Canny(mask, edges, 50, 150);
@@ -49,7 +122,7 @@ void detectAndAnalyzeOthelloBoard(cv::Mat& frame) {
     std::vector<cv::Point> boardContour;
     for (const auto& contour : contours) {
         std::vector<cv::Point> approx;
-        cv::approxPolyDP(contour, approx, 0.02 * cv::arcLength(contour, true), true);
+        cv::approxPolyDP(contour, approx, 0.01 * cv::arcLength(contour, true), true);
         if (approx.size() == 4) {
             double area = cv::contourArea(approx);
             if (area > 1000) { // 十分大きな四角形だけを対象
@@ -64,11 +137,25 @@ void detectAndAnalyzeOthelloBoard(cv::Mat& frame) {
     }
 
     // 盤面を正面から見たように変換
+    // boardContourの中で左上の点を探す（最小のx + yの値）
+    int minIndex = 0;
+    for (int i = 1; i < boardContour.size(); ++i) {
+        if (boardContour[i].x + boardContour[i].y < boardContour[minIndex].x + boardContour[minIndex].y) {
+            minIndex = i;
+        }
+    }
+    // 左上の点をboardContour[0]にするよう配列を回転
+    std::rotate(boardContour.begin(), boardContour.begin() + minIndex, boardContour.end());
+    std::swap(boardContour[1], boardContour[3]);
+
     std::vector<cv::Point2f> srcPoints, dstPoints;
+    // boardContourの順序: 左上、右上、右下、左下になっている状態
     for (const auto& point : boardContour) {
         srcPoints.push_back(cv::Point2f(point.x * mag, point.y * mag));
     }
     dstPoints = { {0, 0}, {len, 0}, {len, len}, {0, len} };
+
+    // 透視変換行列を計算
     cv::Mat transformMatrix = cv::getPerspectiveTransform(srcPoints, dstPoints);
     cv::Mat warpedBoard;
     cv::warpPerspective(frame, warpedBoard, transformMatrix, cv::Size(len, len));
@@ -109,18 +196,23 @@ void detectAndAnalyzeOthelloBoard(cv::Mat& frame) {
     // 距離値が極大となる点を検出
     cv::Mat peaks;
     cv::threshold(dist, peaks, 0.75, 1.0, cv::THRESH_BINARY);
+    //cv::Mat peakB, peakW;
+    //cv::threshold(distB, peakB, 0.6, 1.0, cv::THRESH_BINARY);
+    //cv::threshold(distW, peakW, 0.75, 1.0, cv::THRESH_BINARY);
+    //cv::bitwise_or(peakB, peakW, peaks);
     cv::imshow("peak", peaks);
     peaks.convertTo(peaks, CV_8U);
 
     std::vector<std::vector<cv::Point>> peakContours;
     cv::findContours(peaks, peakContours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-    //cv::Mat adp;
-    cv::Mat gray, adp;
-    cv::cvtColor(warpedBoard, gray, cv::COLOR_BGR2GRAY);
-    cv::adaptiveThreshold(gray, adp, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY, 191, -20);
-    cv::imshow("adp", adp);
+    ////cv::Mat adp;
+    //cv::Mat gray, adp;
+    //cv::cvtColor(warpedBoard, gray, cv::COLOR_BGR2GRAY);
+    //cv::adaptiveThreshold(gray, adp, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY, 191, -20);
+    //cv::imshow("adp", adp);
 
+    std::vector<std::vector<int>> newBoard(8, std::vector<int>(8, 0));
     for (const auto& contour : peakContours) {
         // 各極大点の重心を計算
         cv::Moments m = cv::moments(contour);
@@ -131,23 +223,38 @@ void detectAndAnalyzeOthelloBoard(cv::Mat& frame) {
             // 重心を円として描画
             cv::Rect cellPos(cx - len / 32, cy - len / 32, len / 16, len / 16);
             // cellPosが画像範囲内に収まっているか確認
-            if (cellPos.x >= 0 && cellPos.y >= 0 && cellPos.x + cellPos.width <= warpedBoard.cols && cellPos.y + cellPos.height <= warpedBoard.rows) {
+            if (0 <= cellPos.x && cellPos.x + cellPos.width <= warpedBoard.cols && 0 <= cellPos.y && cellPos.y + cellPos.height <= warpedBoard.rows) {
                 cv::Mat cell = warpedBoard(cellPos);
-                cv::Scalar color = cv::mean(cell);
-                cv::circle(warpedBoard, cv::Point(cx, cy), 1, (color[0] > 150) ? cv::Scalar(0, 0, 255) : cv::Scalar(255, 0, 0), -1);
+                cv::Scalar stoneColor = cv::mean(cell);
+                if (stoneColor[0] > 150) {
+                    stoneColor = cv::Scalar(0, 0, 255);
+                    newBoard[cx / (len / 8)][cy / (len / 8)] = 2;
+                }
+                else {
+                    stoneColor = cv::Scalar(255, 0, 0);
+                    newBoard[cx / (len / 8)][cy / (len / 8)] = 1;
+                }
+                cv::circle(warpedBoard, cv::Point(cx, cy), 1, stoneColor , -1);
             } else {
                 std::cerr << "cellPos is out of bounds: " << cellPos << std::endl;
             }
         }
     }
-
-
+    checkBoard(newBoard);
 
     // 枠線を元の画像に描画
     for (size_t i = 0; i < boardContour.size(); ++i) {
         cv::line(frame, boardContour[i] * mag, boardContour[(i + 1) % boardContour.size()] * mag, cv::Scalar(0, 255, 0), 2);
     }
     // 切り取ったオセロ版を描画
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            if (!board[i][j]) {
+                if (moves[i][j]) cv::rectangle(warpedBoard, cv::Point(i * len / 8, j * len / 8), cv::Point((i + 1) * len / 8, (j + 1) * len / 8),moves[i][j] - 1 ? cv::Scalar(127, 127, 127) : cv::Scalar(31, 31, 31), 1);
+            } else if (board[i][j] == 2) cv::circle(warpedBoard, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(255, 255, 255), -1);
+            else cv::circle(warpedBoard, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(0, 0, 0), -1);
+        }
+    }
     cv::resize(warpedBoard, warpedBoard, cv::Size(), 4, 4);
     cv::imshow("square", warpedBoard);
 }
