@@ -3,10 +3,12 @@
 
 // 画像の圧縮倍率
 const double mag = 5;
-// 緑とする範囲(HSV)
+// 色の範囲(HSV)
 const cv::Scalar lowerGreen(35, 60, 100), upperGreen(90, 255, 255);
+const cv::Scalar lowerBlack(0, 0, 0), upperBlack(255, 191, 127);
+const cv::Scalar lowerWhite(0, 0, 191), upperWhite(255, 127, 255);
 // 切り取った正方形の一辺
-const int len = 80;
+const int len = 96;
 
 // 緑色か確かめる関数
 bool isGreen(const cv::Scalar& color) {
@@ -70,35 +72,47 @@ void detectAndAnalyzeOthelloBoard(cv::Mat& frame) {
 
     // 盤面を解析したい
     // 画像を平滑化
-    cv::GaussianBlur(warpedBoard, blur, cv::Size(7, 7), 0.0);
-    cv::imshow("blur2", blur);
+    //cv::GaussianBlur(warpedBoard, blur, cv::Size(7, 7), 0.0);
+    //cv::imshow("blur2", blur);
     // HSVに変換
-    cv::cvtColor(blur, hsv, cv::COLOR_BGR2HSV);
+    cv::cvtColor(warpedBoard, hsv, cv::COLOR_BGR2HSV);
     // 緑色の検出
     cv::inRange(hsv, lowerGreen, upperGreen, mask);
     cv::imshow("mask2", mask);
+    cv::Mat gray;
+    cv::bitwise_not(mask, gray);
+    //cv::Mat black, white;
+    //cv::inRange(hsv, lowerBlack, upperBlack, black);
+    //cv::inRange(hsv, lowerWhite, upperWhite, white);
+    //cv::imshow("B", black);
+    //cv::imshow("W", white);
     //// エッジ検出
     // cv::Canny(mask, edges, 50, 150);
     // cv::imshow("edge2", edges);
 
-    cv::Mat gray;
-    cv::bitwise_not(mask, gray);
 
     // 距離変換を適用して石の中心を検出
     cv::Mat dist;
     cv::distanceTransform(gray, dist, cv::DIST_L2, 5);
     cv::normalize(dist, dist, 0, 1.0, cv::NORM_MINMAX);
+    //cv::Mat distB, distW;
+    //cv::distanceTransform(black, distB, cv::DIST_L2, 5);
+    //cv::normalize(distB, distB, 0, 1.0, cv::NORM_MINMAX);
+    //cv::distanceTransform(white, distW, cv::DIST_L2, 5);
+    //cv::normalize(distW, distW, 0, 1.0, cv::NORM_MINMAX);
+    //cv::bitwise_or(distB, distW, dist);
     cv::imshow("dist", dist);
 
     // 距離値が極大となる点を検出
     cv::Mat peaks;
-    cv::threshold(dist, peaks, 0.6, 1.0, cv::THRESH_BINARY);
+    cv::threshold(dist, peaks, 0.75, 1.0, cv::THRESH_BINARY);
     cv::imshow("peak", peaks);
     peaks.convertTo(peaks, CV_8U);
 
     std::vector<std::vector<cv::Point>> peakContours;
     cv::findContours(peaks, peakContours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
+    //cv::Mat gray, adp;
     cv::Mat adp;
     cv::cvtColor(warpedBoard, gray, cv::COLOR_BGR2GRAY);
     cv::adaptiveThreshold(gray, adp, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY, 191, -20);
@@ -131,7 +145,7 @@ void detectAndAnalyzeOthelloBoard(cv::Mat& frame) {
         cv::line(frame, boardContour[i] * mag, boardContour[(i + 1) % boardContour.size()] * mag, cv::Scalar(0, 255, 0), 2);
     }
     // 切り取ったオセロ版を描画
-    cv::resize(warpedBoard, warpedBoard, cv::Size(), 5, 5);
+    cv::resize(warpedBoard, warpedBoard, cv::Size(), 4, 4);
     cv::imshow("square", warpedBoard);
 }
 
