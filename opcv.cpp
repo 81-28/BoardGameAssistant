@@ -1,4 +1,7 @@
-﻿#include <opencv2/opencv.hpp>
+﻿// ConsoleApplication_test.cpp : このファイルには 'main' 関数が含まれています。プログラム実行の開始と終了がそこで行われます。
+//
+
+#include <opencv2/opencv.hpp>
 #include <iostream>
 
 // 画像の圧縮倍率
@@ -150,11 +153,11 @@ void detectAndAnalyzeOthelloBoard(cv::Mat& frame) {
 }
 
 int main() {
-     cv::VideoCapture cap(1);
-     if (!cap.isOpened()) {
-         std::cerr << "カメラが開けませんでした！" << std::endl;
-         return -1;
-     }
+    cv::VideoCapture cap(1);
+    if (!cap.isOpened()) {
+        std::cerr << "カメラが開けませんでした！" << std::endl;
+        return -1;
+    }
 
     // cv::Mat img(600, 600, CV_8UC3);
     // img = cv::Scalar(255, 255, 255);
@@ -174,6 +177,8 @@ int main() {
 
     return 0;
 }
+
+
 
 #include <opencv2/core/version.hpp>
 #ifdef _DEBUG
