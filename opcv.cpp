@@ -11,17 +11,17 @@ const cv::Scalar lowerWhite(0, 0, 191), upperWhite(255, 127, 255);
 const int len = 96;
 
 // 緑色か確かめる関数
-bool isGreen(const cv::Scalar& color) {
-    cv::Mat colorMat(1, 1, CV_8UC3, cv::Scalar(color[0], color[1], color[2]));
-    cv::Mat hsv;
-    cv::cvtColor(colorMat, hsv, cv::COLOR_BGR2HSV);
-
-    cv::Vec3b hsvColor = hsv.at<cv::Vec3b>(0, 0);
-    int h = hsvColor[0], s = hsvColor[1], v = hsvColor[2];
-
-    // 緑のHSV範囲を指定
-    return (lowerGreen[0] <= h && h <= upperGreen[0]) && (lowerGreen[1] <= s && s <= upperGreen[1]) && (lowerGreen[2] <= v && v <= upperGreen[2]);
-}
+//bool isGreen(const cv::Scalar& color) {
+//    cv::Mat colorMat(1, 1, CV_8UC3, cv::Scalar(color[0], color[1], color[2]));
+//    cv::Mat hsv;
+//    cv::cvtColor(colorMat, hsv, cv::COLOR_BGR2HSV);
+//
+//    cv::Vec3b hsvColor = hsv.at<cv::Vec3b>(0, 0);
+//    int h = hsvColor[0], s = hsvColor[1], v = hsvColor[2];
+//
+//    // 緑のHSV範囲を指定
+//    return (lowerGreen[0] <= h && h <= upperGreen[0]) && (lowerGreen[1] <= s && s <= upperGreen[1]) && (lowerGreen[2] <= v && v <= upperGreen[2]);
+//}
 
 // 盤面の検出と解析を行う関数
 void detectAndAnalyzeOthelloBoard(cv::Mat& frame) {
@@ -77,15 +77,15 @@ void detectAndAnalyzeOthelloBoard(cv::Mat& frame) {
     // HSVに変換
     cv::cvtColor(warpedBoard, hsv, cv::COLOR_BGR2HSV);
     // 緑色の検出
-    cv::inRange(hsv, lowerGreen, upperGreen, mask);
-    cv::imshow("mask2", mask);
-    cv::Mat gray;
-    cv::bitwise_not(mask, gray);
-    //cv::Mat black, white;
-    //cv::inRange(hsv, lowerBlack, upperBlack, black);
-    //cv::inRange(hsv, lowerWhite, upperWhite, white);
-    //cv::imshow("B", black);
-    //cv::imshow("W", white);
+    //cv::inRange(hsv, lowerGreen, upperGreen, mask);
+    //cv::imshow("mask2", mask);
+    //cv::Mat gray;
+    //cv::bitwise_not(mask, gray);
+    cv::Mat black, white;
+    cv::inRange(hsv, lowerBlack, upperBlack, black);
+    cv::inRange(hsv, lowerWhite, upperWhite, white);
+    cv::imshow("B", black);
+    cv::imshow("W", white);
     //// エッジ検出
     // cv::Canny(mask, edges, 50, 150);
     // cv::imshow("edge2", edges);
@@ -93,14 +93,14 @@ void detectAndAnalyzeOthelloBoard(cv::Mat& frame) {
 
     // 距離変換を適用して石の中心を検出
     cv::Mat dist;
-    cv::distanceTransform(gray, dist, cv::DIST_L2, 5);
-    cv::normalize(dist, dist, 0, 1.0, cv::NORM_MINMAX);
-    //cv::Mat distB, distW;
-    //cv::distanceTransform(black, distB, cv::DIST_L2, 5);
-    //cv::normalize(distB, distB, 0, 1.0, cv::NORM_MINMAX);
-    //cv::distanceTransform(white, distW, cv::DIST_L2, 5);
-    //cv::normalize(distW, distW, 0, 1.0, cv::NORM_MINMAX);
-    //cv::bitwise_or(distB, distW, dist);
+    //cv::distanceTransform(gray, dist, cv::DIST_L2, 5);
+    //cv::normalize(dist, dist, 0, 1.0, cv::NORM_MINMAX);
+    cv::Mat distB, distW;
+    cv::distanceTransform(black, distB, cv::DIST_L2, 5);
+    cv::normalize(distB, distB, 0, 1.0, cv::NORM_MINMAX);
+    cv::distanceTransform(white, distW, cv::DIST_L2, 5);
+    cv::normalize(distW, distW, 0, 1.0, cv::NORM_MINMAX);
+    cv::bitwise_or(distB, distW, dist);
     cv::imshow("dist", dist);
 
     // 距離値が極大となる点を検出
@@ -112,8 +112,8 @@ void detectAndAnalyzeOthelloBoard(cv::Mat& frame) {
     std::vector<std::vector<cv::Point>> peakContours;
     cv::findContours(peaks, peakContours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-    //cv::Mat gray, adp;
-    cv::Mat adp;
+    //cv::Mat adp;
+    cv::Mat gray, adp;
     cv::cvtColor(warpedBoard, gray, cv::COLOR_BGR2GRAY);
     cv::adaptiveThreshold(gray, adp, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY, 191, -20);
     cv::imshow("adp", adp);
