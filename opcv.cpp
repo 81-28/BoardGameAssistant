@@ -4,6 +4,7 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include "Othello.hpp"
+#include <windows.h>
 
 // 画像の圧縮倍率
 const double mag = 5;
@@ -20,6 +21,8 @@ std::vector<std::pair<int, int>> movePlace;
 const int dx[8] = { 0, 0, 1, -1, 1, -1, 1, -1 };
 const int dy[8] = { 1, -1, 0, 0, 1, -1, -1, 1 };
 std::pair<int, int> putPos;
+
+std::vector<cv::Point> boardContour;
 
 int player = 1;
 
@@ -100,13 +103,12 @@ void checkBoard(std::vector<std::vector<int>>& newBoard) {
 //    return (lowerGreen[0] <= h && h <= upperGreen[0]) && (lowerGreen[1] <= s && s <= upperGreen[1]) && (lowerGreen[2] <= v && v <= upperGreen[2]);
 //}
 
-// 盤面の検出と解析を行う関数
-void detectAndAnalyzeOthelloBoard(cv::Mat& frame) {
+// 盤面の位置の検出を行う関数
+void detectBoard(cv::Mat& frame) {
     cv::Mat comp, blur, hsv, mask, edges;
 
-
     // 画像を縮小し、平滑化
-    cv::resize(frame, comp, cv::Size(), 1/mag, 1/mag);
+    cv::resize(frame, comp, cv::Size(), 1 / mag, 1 / mag);
     cv::GaussianBlur(comp, blur, cv::Size(3, 3), 0.0);
     //cv::GaussianBlur(comp, blur, cv::Size(15, 15), 0.0);
     // HSVに変換
@@ -122,37 +124,50 @@ void detectAndAnalyzeOthelloBoard(cv::Mat& frame) {
     // 四角形を検出
     std::vector<std::vector<cv::Point>> contours;
     cv::findContours(edges, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-    std::vector<cv::Point> boardContour;
+    std::vector<cv::Point> newBoardContour;
     for (const auto& contour : contours) {
         std::vector<cv::Point> approx;
         cv::approxPolyDP(contour, approx, 0.01 * cv::arcLength(contour, true), true);
         if (approx.size() == 4) {
             double area = cv::contourArea(approx);
             if (area > 1000) { // 十分大きな四角形だけを対象
-                boardContour = approx;
+                newBoardContour = approx;
                 break;
             }
         }
     }
-    if (boardContour.empty()) {
+    if (newBoardContour.empty()) {
         std::cerr << "オセロ盤が検出されませんでした！" << std::endl;
         return;
     }
+    else {
+        boardContour = newBoardContour;
+        // boardContourの順序を、左上、右上、右下、左下にする
+        // boardContourの中で左上の点を探す（最小のx + yの値）
+        int minIndex = 0;
+        for (int i = 1; i < boardContour.size(); ++i) {
+            if (boardContour[i].x + boardContour[i].y < boardContour[minIndex].x + boardContour[minIndex].y) {
+                minIndex = i;
+            }
+        }
+        // 左上の点をboardContour[0]にするよう配列を回転
+        std::rotate(boardContour.begin(), boardContour.begin() + minIndex, boardContour.end());
+        std::swap(boardContour[1], boardContour[3]);
+        return;
+    }
+}
+
+// 盤面の解析を行う関数
+void analyzeOthelloBoard(cv::Mat& frame) {
+    if (boardContour.empty()) {
+        std::cerr << "オセロ盤の位置が不明です！" << std::endl;
+        return;
+    }
+    //cv::Mat hsv, mask, edges;
+    cv::Mat hsv;
 
     // 盤面を正面から見たように変換
-    // boardContourの中で左上の点を探す（最小のx + yの値）
-    int minIndex = 0;
-    for (int i = 1; i < boardContour.size(); ++i) {
-        if (boardContour[i].x + boardContour[i].y < boardContour[minIndex].x + boardContour[minIndex].y) {
-            minIndex = i;
-        }
-    }
-    // 左上の点をboardContour[0]にするよう配列を回転
-    std::rotate(boardContour.begin(), boardContour.begin() + minIndex, boardContour.end());
-    std::swap(boardContour[1], boardContour[3]);
-
     std::vector<cv::Point2f> srcPoints, dstPoints;
-    // boardContourの順序: 左上、右上、右下、左下になっている状態
     for (const auto& point : boardContour) {
         srcPoints.push_back(cv::Point2f(point.x * mag, point.y * mag));
     }
@@ -273,12 +288,24 @@ int main() {
     // img = cv::Scalar(255, 255, 255);
     // cv::rectangle(img, cv::Point(0, 0), cv::Point(600, 600), cv::Scalar(0, 0, 255), 8, cv::LINE_4);
 
+    int imgNum = 0;
+
     while (true) {
         cv::Mat frame;
         cap >> frame;
         if (frame.empty()) break;
-        detectAndAnalyzeOthelloBoard(frame);
-        cv::imshow("Othello Board Detection", frame);
+
+        if (GetAsyncKeyState('S') & 0x8000) {
+            cv::imwrite("OthelloBoard_" + std::to_string(imgNum) + ".jpg", frame);
+            std::cerr << "\nimg saved!\n\n";
+            imgNum++;
+        }
+        if (GetAsyncKeyState(VK_SPACE) & 0x8000) {
+            detectBoard(frame);
+        }
+
+        analyzeOthelloBoard(frame);
+        cv::imshow("Othello Board", frame);
 
         // cv::imshow("aa", img);
 
