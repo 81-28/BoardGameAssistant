@@ -3,6 +3,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <iostream>
+#include "Othello.hpp"
 
 // 画像の圧縮倍率
 const double mag = 5;
