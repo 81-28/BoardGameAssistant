@@ -160,7 +160,7 @@ void detectBoard(cv::Mat& frame) {
 // 盤面の解析を行う関数
 void analyzeOthelloBoard(cv::Mat& frame) {
     if (boardContour.empty()) {
-        std::cerr << "オセロ盤の位置が不明です！" << std::endl;
+        //std::cerr << "オセロ盤の位置が不明です！" << std::endl;
         return;
     }
     //cv::Mat hsv, mask, edges;
@@ -283,6 +283,8 @@ int main() {
         std::cerr << "カメラが開けませんでした！" << std::endl;
         return -1;
     }
+
+    std::cerr << "\nPress Space to Detect Board\n\n";
 
     // cv::Mat img(600, 600, CV_8UC3);
     // img = cv::Scalar(255, 255, 255);
