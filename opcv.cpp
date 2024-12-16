@@ -18,6 +18,7 @@ std::vector<std::vector<int>> moves(8, std::vector<int>(8, 0));
 std::vector<std::pair<int, int>> movePlace;
 const int dx[8] = { 0, 0, 1, -1, 1, -1, 1, -1 };
 const int dy[8] = { 1, -1, 0, 0, 1, -1, -1, 1 };
+std::pair<int, int> putPos;
 
 int player = 1;
 
@@ -69,6 +70,7 @@ void checkBoard(std::vector<std::vector<int>>& newBoard) {
     bool canAdvance = false;
     for (std::pair<int, int> p : movePlace) {
         if (newBoard[p.first][p.second] == player) {
+            putPos = p;
             canAdvance = true;
             break;
         }
