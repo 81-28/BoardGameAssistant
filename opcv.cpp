@@ -4,7 +4,6 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include "Othello.hpp"
-#include <windows.h>
 
 // 画像の圧縮倍率
 const double mag = 5;
@@ -297,12 +296,13 @@ int main() {
         cap >> frame;
         if (frame.empty()) break;
 
-        if (GetAsyncKeyState('S') & 0x8000) {
+        int key = cv::waitKey(1);
+        if (key == 's') {
             cv::imwrite("OthelloBoard_" + std::to_string(imgNum) + ".jpg", frame);
             std::cerr << "\nimg saved!\n\n";
             imgNum++;
         }
-        if (GetAsyncKeyState(VK_SPACE) & 0x8000) {
+        if (key == 32) {
             detectBoard(frame);
         }
 
@@ -311,7 +311,7 @@ int main() {
 
         // cv::imshow("aa", img);
 
-        if (cv::waitKey(30) == 27) break; // ESCキーで終了
+        if (key == 27) break; // ESCキーで終了
     }
 
     return 0;
