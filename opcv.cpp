@@ -10,8 +10,8 @@ const double mag = 5;
 const double lenMag = 4.2;
 // 色の範囲(HSV)
 const cv::Scalar lowerGreen(35, 60, 100), upperGreen(90, 255, 255);
-const cv::Scalar lowerBlack(0, 0, 0), upperBlack(255, 191, 127);
-const cv::Scalar lowerWhite(0, 0, 191), upperWhite(255, 95, 255);
+const cv::Scalar lowerBlack(0, 0, 0), upperBlack(255, 191, 191);
+const cv::Scalar lowerWhite(0, 0, 192), upperWhite(255, 95, 255);
 // 切り取った正方形の一辺
 const int len = 160;
 // 盤面情報の記録 0:無,1:黒,2:白
@@ -270,9 +270,9 @@ cv::Mat analyzeOthelloBoard(cv::Mat& frame, cv::Mat& boardImg, const bool& force
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             if (!board[i][j]) {
-                if (moves[i][j]) cv::rectangle(result, cv::Point(i * len / 8, j * len / 8), cv::Point((i + 1) * len / 8, (j + 1) * len / 8),moves[i][j] - 1 ? cv::Scalar(0, 0, 255) : cv::Scalar(255, 0, 0), 1);
-            } else if (board[i][j] == 2) cv::circle(warpedBoard, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(255, 255, 255), -1);
-            else cv::circle(warpedBoard, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(0, 0, 0), -1);
+                if (moves[i][j]) cv::rectangle(result, cv::Point(i * len / 8 + 10, j * len / 8 + 10), cv::Point((i + 1) * len / 8 - 10, (j + 1) * len / 8 - 10), moves[i][j] - 1 ? cv::Scalar(0, 0, 255) : cv::Scalar(255, 0, 0), 1);
+            } else if (board[i][j] == 2) cv::circle(warpedBoard, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(0, 0, 255), -1);
+            else cv::circle(warpedBoard, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(255, 0, 0), -1);
         }
     }
     cv::resize(warpedBoard, warpedBoard, cv::Size(), lenMag, lenMag);
@@ -315,7 +315,7 @@ int main() {
 
         cv::Mat boardImg(len, len, CV_8UC3);
         boardImg = cv::Scalar(0, 0, 0);
-        cv::rectangle(boardImg, cv::Point(0, 0), cv::Point(len, len), cv::Scalar(0, 255, 0), 2, cv::LINE_4);
+        cv::rectangle(boardImg, cv::Point(0, 0), cv::Point(len, len), cv::Scalar(0, 63, 0), 1, cv::LINE_4);
 
         boardImg = analyzeOthelloBoard(frame, boardImg, key == 'f');
         cv::imshow("Othello Board", frame);
