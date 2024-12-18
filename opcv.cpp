@@ -3,7 +3,7 @@
 
 #include <opencv2/opencv.hpp>
 //#include <iostream>
-//#include "Othello.hpp"
+#include "Othello.hpp"
 
 // 画像の圧縮倍率
 const double mag = 5;
@@ -20,7 +20,8 @@ std::vector<std::vector<int>> moves(8, std::vector<int>(8, 0));
 std::vector<std::pair<int, int>> movePlace;
 const int dx[8] = { 0, 0, 1, -1, 1, -1, 1, -1 };
 const int dy[8] = { 1, -1, 0, 0, 1, -1, -1, 1 };
-std::pair<int, int> putPos;
+//std::pair<int, int> putPos;
+Othello othello;
 
 std::vector<cv::Point> boardContour;
 
@@ -74,7 +75,7 @@ void checkBoard(std::vector<std::vector<int>>& newBoard, const bool& force = fal
     bool canAdvance = force;
     for (std::pair<int, int> p : movePlace) {
         if (newBoard[p.first][p.second] == player) {
-            putPos = p;
+            //putPos = p;
             canAdvance = true;
             break;
         }
@@ -260,7 +261,10 @@ cv::Mat analyzeOthelloBoard(cv::Mat& frame, cv::Mat& boardImg, const bool& force
             }
         }
     }
-    checkBoard(newBoard, force);
+    //checkBoard(newBoard, force);
+    othello.CreatePerfectBoard(newBoard);
+    moves = othello.outBoard;
+
 
     // 枠線を元の画像に描画
     for (size_t i = 0; i < boardContour.size(); ++i) {
@@ -282,7 +286,7 @@ cv::Mat analyzeOthelloBoard(cv::Mat& frame, cv::Mat& boardImg, const bool& force
 }
 
 int main() {
-    cv::VideoCapture cap(1);
+    cv::VideoCapture cap(0);
     if (!cap.isOpened()) {
         std::cerr << "カメラが開けませんでした！" << std::endl;
         return -1;
