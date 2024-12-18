@@ -8,6 +8,7 @@
 // 画像の圧縮倍率
 const double mag = 5;
 const double lenMag = 4.2;
+const double padding = 2;
 // 色の範囲(HSV)
 const cv::Scalar lowerGreen(35, 60, 100), upperGreen(90, 255, 255);
 const cv::Scalar lowerBlack(0, 0, 0), upperBlack(255, 191, 191);
@@ -18,78 +19,75 @@ const int len = 160;
 std::vector<std::vector<int>> board;
 std::vector<std::vector<int>> moves(8, std::vector<int>(8, 0));
 std::vector<std::pair<int, int>> movePlace;
-const int dx[8] = { 0, 0, 1, -1, 1, -1, 1, -1 };
-const int dy[8] = { 1, -1, 0, 0, 1, -1, -1, 1 };
-//std::pair<int, int> putPos;
+
 Othello othello;
 
 std::vector<cv::Point> boardContour;
 
 int player = 1;
 
-bool canFlipDirection(const int& x, const int& y, const int& color, const int& dirX, const int& dirY) {
-    int nx = x + dirX, ny = y + dirY;
-    bool foundOpponent = false;
+//bool canFlipDirection(const int& x, const int& y, const int& color, const int& dirX, const int& dirY) {
+//    int nx = x + dirX, ny = y + dirY;
+//    bool foundOpponent = false;
+//
+//    while (0 <= nx && nx < 8 && 0 <= ny && ny < 8) {
+//        if (!board[nx][ny]) {
+//            return false; // 空きマスまたは駒が存在しない場合
+//        }
+//        if (board[nx][ny] == color) {
+//            return foundOpponent; // 自分の駒が見つかった
+//        }
+//        foundOpponent = true; // 相手の駒を発見
+//        nx += dirX;
+//        ny += dirY;
+//    }
+//    return false;
+//}
 
-    while (0 <= nx && nx < 8 && 0 <= ny && ny < 8) {
-        if (!board[nx][ny]) {
-            return false; // 空きマスまたは駒が存在しない場合
-        }
-        if (board[nx][ny] == color) {
-            return foundOpponent; // 自分の駒が見つかった
-        }
-        foundOpponent = true; // 相手の駒を発見
-        nx += dirX;
-        ny += dirY;
-    }
-    return false;
-}
+//bool canFlip(const int& x, const int& y, const int& color) {
+//    for (int i = 0; i < 8; i++) {
+//        if (canFlipDirection(x, y, color, dx[i], dy[i])) return true;
+//    }
+//    return false;
+//}
 
-bool canFlip(const int& x, const int& y, const int& color) {
-    for (int i = 0; i < 8; i++) {
-        if (canFlipDirection(x, y, color, dx[i], dy[i])) return true;
-    }
-    return false;
-}
+//void findMoves(const int& color) {
+//    moves = std::vector<std::vector<int>>(8, std::vector<int>(8, 0));
+//    movePlace = std::vector<std::pair<int, int>>(0);
+//    for (int x = 0; x < 8; x++) {
+//        for (int y = 0; y < 8; y++) {
+//            if (!board[x][y] && canFlip(x,y,color)) {
+//                moves[x][y] = color;
+//                movePlace.push_back({ x,y });
+//            }
+//        }
+//    }
+//    return;
+//}
 
-void findMoves(const int& color) {
-    moves = std::vector<std::vector<int>>(8, std::vector<int>(8, 0));
-    movePlace = std::vector<std::pair<int, int>>(0);
-    for (int x = 0; x < 8; x++) {
-        for (int y = 0; y < 8; y++) {
-            if (!board[x][y] && canFlip(x,y,color)) {
-                moves[x][y] = color;
-                movePlace.push_back({ x,y });
-            }
-        }
-    }
-    return;
-}
-
-void checkBoard(std::vector<std::vector<int>>& newBoard, const bool& force = false) {
-    if (!board.size()) {
-        board = newBoard;
-        findMoves(player);
-        return;
-    }
-    bool canAdvance = force;
-    for (std::pair<int, int> p : movePlace) {
-        if (newBoard[p.first][p.second] == player) {
-            //putPos = p;
-            canAdvance = true;
-            break;
-        }
-    }
-    if (canAdvance) {
-        board = newBoard;
-        for (int i = 0; i < 3; i++) {
-            player = 3 - player;
-            findMoves(player);
-            if (movePlace.size()) break;
-        }
-    }
-    return;
-}
+//void checkBoard(std::vector<std::vector<int>>& newBoard, const bool& force = false) {
+//    if (!board.size()) {
+//        board = newBoard;
+//        findMoves(player);
+//        return;
+//    }
+//    bool canAdvance = force;
+//    for (std::pair<int, int> p : movePlace) {
+//        if (newBoard[p.first][p.second] == player) {
+//            canAdvance = true;
+//            break;
+//        }
+//    }
+//    if (canAdvance) {
+//        board = newBoard;
+//        for (int i = 0; i < 3; i++) {
+//            player = 3 - player;
+//            findMoves(player);
+//            if (movePlace.size()) break;
+//        }
+//    }
+//    return;
+//}
 
 // 緑色か確かめる関数
 //bool isGreen(const cv::Scalar& color) {
@@ -233,6 +231,8 @@ cv::Mat analyzeOthelloBoard(cv::Mat& frame, cv::Mat& boardImg, const bool& force
     //cv::adaptiveThreshold(gray, adp, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY, 191, -20);
     //cv::imshow("adp", adp);
 
+    int blackStones = 0, whiteStones = 0;
+
     std::vector<std::vector<int>> newBoard(8, std::vector<int>(8, 0));
     for (const auto& contour : peakContours) {
         // 各極大点の重心を計算
@@ -250,10 +250,12 @@ cv::Mat analyzeOthelloBoard(cv::Mat& frame, cv::Mat& boardImg, const bool& force
                 if (stoneColor[0] > 150) {
                     stoneColor = cv::Scalar(0, 0, 255);
                     newBoard[cx / (len / 8)][cy / (len / 8)] = 2;
+                    whiteStones++;
                 }
                 else {
                     stoneColor = cv::Scalar(255, 0, 0);
                     newBoard[cx / (len / 8)][cy / (len / 8)] = 1;
+                    blackStones++;
                 }
                 cv::circle(warpedBoard, cv::Point(cx, cy), 1, stoneColor , -1);
             } else {
@@ -261,22 +263,36 @@ cv::Mat analyzeOthelloBoard(cv::Mat& frame, cv::Mat& boardImg, const bool& force
             }
         }
     }
+
+    //if (othello.finish) {
+    //    if (blackStones == whiteStones) {
+    //    } else if (blackStones > whiteStones) {
+    //    } else {}
+    //    return result;
+    //}
+
     //checkBoard(newBoard, force);
-    othello.CreatePerfectBoard(newBoard);
-    moves = othello.outBoard;
+    // othello.CreatePerfectBoard(newBoard);
+    // moves = othello.outBoard;
+    moves = othello.main(newBoard,force);
 
 
     // 枠線を元の画像に描画
     for (size_t i = 0; i < boardContour.size(); ++i) {
         cv::line(frame, boardContour[i] * mag, boardContour[(i + 1) % boardContour.size()] * mag, cv::Scalar(0, 255, 0), 2);
     }
-    // 切り取ったオセロ版を描画
+    // 描画
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
-            if (!board[i][j]) {
-                if (moves[i][j]) cv::rectangle(result, cv::Point(i * len / 8 + 10, j * len / 8 + 10), cv::Point((i + 1) * len / 8 - 10, (j + 1) * len / 8 - 10), moves[i][j] - 1 ? cv::Scalar(0, 0, 255) : cv::Scalar(255, 0, 0), 1);
-            } else if (board[i][j] == 2) cv::circle(warpedBoard, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(0, 0, 255), -1);
-            else cv::circle(warpedBoard, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(255, 0, 0), -1);
+            if (moves[i][j]) {
+                if (moves[i][j] == 1) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(255, 0, 0), 1);
+                if (moves[i][j] == 2) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(0, 0, 255), 1);
+                if (moves[i][j] == 3) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(255, 0, 255), 1);
+            }
+            //else {
+            //    if (moves[i][j] == 1) cv::circle(warpedBoard, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(255, 0, 0), -1);
+            //    else cv::circle(warpedBoard, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(0, 0, 255), -1);
+            //}
         }
     }
     cv::resize(warpedBoard, warpedBoard, cv::Size(), lenMag, lenMag);
