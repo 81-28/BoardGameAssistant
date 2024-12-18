@@ -12,11 +12,12 @@ private:
     vector<vector<int>> perfectBoard;
     const int dx[8] = { 0, 0, 1, -1, 1, -1, 1, -1 };
     const int dy[8] = { 1, -1, 0, 0, 1, -1, -1, 1 };
-    pair<int,int> perfectCoordinate;
+    pair<int,int> perfectCoordinate = make_pair(-1,0);
     vector<pair<int, int>> canFlip_koma = {};
 public:
     Othello() : outBoard(8, vector<int>(8, 0)), perfectBoard(0) { }
     vector<vector<int>> outBoard;
+    bool finish = false;
     
     //// ボードの表示
     //void displayoutBoard() {
@@ -132,11 +133,18 @@ public:
     }
 
 
+    bool Finish(){
+        if(!canFlip_koma.empty()){
+            return true;
+        }
+        return false;
+    }
 
 
     
     //ひっくりかえし切れたかの判定(Colorturnを変える処理も含む)
     bool ReverceAll(vector<vector<int>> inBoard,int Colorturn) {
+        
         int temp = 0;
         for(int i = 0; i < 8; i++){
             for(int j = 0; j < 8; j++){
@@ -148,13 +156,34 @@ public:
             }
         }
         if(temp == 64){
-        initializeoutBoard();
-        changeColor();
+         initializeoutBoard();
+         changeColor();
+         perfectBoard = {};
+         perfectCoordinate = make_pair(-1,0);
             return true;
         }
         
         return false;
        
+    }
+
+    //　ほぼメイン関数
+    vector<vector<int>> hobomain(vector<vector<int>> inBoard){
+        if(perfectCoordinate.first == -1){
+            canFlipArea(inBoard);
+         if(!canPut(inBoard)){
+           return outBoard; 
+        }
+
+        CreatePerfectBoard(inBoard);
+            
+        }
+        
+     
+        if(!ReverceAll(inBoard,Colorturn)){
+            return outBoard;
+        }
+        return outBoard;            
     }
 
 
