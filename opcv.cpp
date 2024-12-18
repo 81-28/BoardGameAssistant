@@ -158,13 +158,14 @@ void detectBoard(cv::Mat& frame) {
 }
 
 // 盤面の解析を行う関数
-void analyzeOthelloBoard(cv::Mat& frame, cv::Mat& boardImg) {
+cv::Mat analyzeOthelloBoard(cv::Mat& frame, const cv::Mat& boardImg) {
     if (boardContour.empty()) {
         //std::cerr << "オセロ盤の位置が不明です！" << std::endl;
-        return;
+        return boardImg;
     }
     //cv::Mat hsv, mask, edges;
     cv::Mat hsv;
+    cv::Mat result = boardImg;
 
     // 盤面を正面から見たように変換
     std::vector<cv::Point2f> srcPoints, dstPoints;
@@ -268,13 +269,15 @@ void analyzeOthelloBoard(cv::Mat& frame, cv::Mat& boardImg) {
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             if (!board[i][j]) {
-                if (moves[i][j]) cv::rectangle(boardImg, cv::Point(i * len / 8, j * len / 8), cv::Point((i + 1) * len / 8, (j + 1) * len / 8),moves[i][j] - 1 ? cv::Scalar(127, 127, 127) : cv::Scalar(31, 31, 31), 1);
+                if (moves[i][j]) cv::rectangle(result, cv::Point(i * len / 8, j * len / 8), cv::Point((i + 1) * len / 8, (j + 1) * len / 8),moves[i][j] - 1 ? cv::Scalar(127, 127, 127) : cv::Scalar(31, 31, 31), 1);
             } else if (board[i][j] == 2) cv::circle(warpedBoard, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(255, 255, 255), -1);
             else cv::circle(warpedBoard, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(0, 0, 0), -1);
         }
     }
     cv::resize(warpedBoard, warpedBoard, cv::Size(), lenMag, lenMag);
     cv::imshow("square", warpedBoard);
+    cv::resize(result, result, cv::Size(), lenMag, lenMag);
+    return result;
 }
 
 int main() {
@@ -284,20 +287,20 @@ int main() {
     //    return -1;
     //}
 
-    cv::Mat frame;
-    frame = cv::imread("OthelloBoard_5.jpg");
     std::cerr << "\nPress Space to Detect Board\n\n";
 
-     cv::Mat boardImg(len, len, CV_8UC3);
+    cv::Mat boardImg(len, len, CV_8UC3);
+    cv::Mat displayBoard;
      boardImg = cv::Scalar(0, 0, 0);
-     //cv::rectangle(boardImg, cv::Point(0, 0), cv::Point(len, len), cv::Scalar(0, 0, 255), 8, cv::LINE_4);
+     cv::rectangle(boardImg, cv::Point(0, 0), cv::Point(len, len), cv::Scalar(0, 255, 0), 2, cv::LINE_4);
 
     int imgNum = 0;
 
     while (true) {
-        //cv::Mat frame;
+        cv::Mat frame;
         //cap >> frame;
         //if (frame.empty()) break;
+        frame = cv::imread("OthelloBoard_5.jpg");
 
         // キー入力を待つ
         int key = cv::waitKey(10);
@@ -314,10 +317,9 @@ int main() {
             detectBoard(frame);
         }
 
-        analyzeOthelloBoard(frame,boardImg);
+        displayBoard = analyzeOthelloBoard(frame, boardImg);
         cv::imshow("Othello Board", frame);
-
-        cv::imshow("board", boardImg);
+        cv::imshow("board", displayBoard);
     }
 
     return 0;
