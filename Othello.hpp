@@ -1,163 +1,116 @@
-#ifndef   Othello_hpp
-#define   Othello_hpp
+#ifndef Othello_hpp
+#define Othello_hpp
 #include <vector>
 using namespace std;
 
 class Othello {
-    // 8x8のボード
-    // 0: 空きマス, 1: 黒, 2: 白(inBoardの場合)
-    // 0: 空きマス, 1: 黒, 2: 白 3:ひっくり返す場所(outBoardの場合)
-private:
-    int Colorturn = 1;
-    vector<vector<int>> perfectBoard;
-    const int dx[8] = { 0, 0, 1, -1, 1, -1, 1, -1 };
-    const int dy[8] = { 1, -1, 0, 0, 1, -1, -1, 1 };
-    pair<int,int> perfectCoordinate;
-    vector<pair<int, int>> canFlip_koma = {};
-public:
-    Othello() : outBoard(8, vector<int>(8, 0)), perfectBoard(0) { }
-    vector<vector<int>> outBoard;
-    
-    //// ボードの表示
-    //void displayoutBoard() {
-    //    for (int i = 0; i < 8; i++) {
-    //        for (int j = 0; j < 8; j++) {
-    //            if (outBoard[i][j] == 0) cout << "- ";
-    //            else if (outBoard[i][j] == 1) cout << "W ";
-    //            else cout << "B ";
-    //        }
-    //        cout << endl;
-    //    }
-    //}
+    private:
+        int Colorturn = 1;
+        vector<vector<int>> board;
+        const int dx[8] = { 0, 0, 1, -1, 1, -1, 1, -1 };
+        const int dy[8] = { 1, -1, 0, 0, 1, -1, -1, 1 };
+        pair<int,int> putPos = {-1,-1};
+        vector<pair<int, int>> canFlipStones = {};
 
-    // Colorturnの変更
-    void changeColor(){
-        Colorturn = 3 - Colorturn;
-    }
-     
-    // 出力行列の初期化 
-    void initializeoutBoard(){
-        outBoard = vector<vector<int>>(8,vector<int>(8,0));
+        bool canFlipDirection(const vector<vector<int>>& inBoard, const int& x, const int& y, const int& dirX, const int& dirY) {
+            int nx = x + dirX, ny = y + dirY;
+            bool foundMyColorOpponent = false;
 
-    }
+            while (nx >= 0 && nx < 8 && ny >= 0 && ny < 8) {
+                if (inBoard[nx][ny] == 0) {
+                    return false; // 空きマスまたは駒が存在しない場合
+                }
+                if (inBoard[nx][ny] == Colorturn) {
+                    return foundMyColorOpponent; // 自分の駒が見つかった
+                }
+                foundMyColorOpponent = true; // 相手の駒を発見
+                nx += dirX;
+                ny += dirY;
+            }
+            return false;
+        }
 
-
-    // 合法手を探す
-    // 出力は無し
-    void canFlipArea(vector<vector<int>> inBoard) {
-        int x = 0, y = 0;
-        for(int x = 0; x < 8; x++){
-            for(int y = 0; y < 8; y++){
-                for(int i = 0; i < 8; i++){
-                    if(inBoard[x][y] == 0){
-                        if(canFlipDirection(inBoard,x, y, dx[i], dy[i])){
-                            canFlip_koma.push_back(make_pair(x, y));
-                            outBoard[x][y] = Colorturn;
+        vector<vector<int>> canFlipArea(const vector<vector<int>>& inBoard) {
+            canFlipStones = {};
+            int x = 0, y = 0;
+            for(int x = 0; x < 8; x++){
+                for(int y = 0; y < 8; y++){
+                    for(int i = 0; i < 8; i++){
+                        if(inBoard[x][y] == 0){
+                            if(canFlipDirection(inBoard,x, y, dx[i], dy[i])){
+                                canFlipStones.push_back(make_pair(x, y));
+                                outBoard[x][y] = Colorturn;
+                            }
                         }
                     }
                 }
             }
         }
         
-        
-    }
-
-
-    
-    // 駒を反転する
-    void flipDirection(int x, int y, int Colorturn, int dirX, int dirY) {
-        int nx = x + dirX, ny = y + dirY;
-
-        if (!canFlipDirection(perfectBoard,x, y, dirX, dirY)) return;
-
-        while (perfectBoard[nx][ny] != Colorturn) {
-            perfectBoard[nx][ny] = Colorturn;
-            nx += dirX;
-            ny += dirY;
-        }
-    }
-   
-    
-
-    // 特定の方向で駒を挟めるか判定
-    bool canFlipDirection(vector<vector<int>> inBoard, int x, int y, int dirX, int dirY){
-        int nx = x + dirX, ny = y + dirY;
-        bool foundMyColorOpponent = false;
-
-        while (nx >= 0 && nx < 8 && ny >= 0 && ny < 8) {
-            if (inBoard[nx][ny] == 0) {
-                return false; // 空きマスまたは駒が存在しない場合
-            }
-            if (inBoard[nx][ny] == Colorturn) {
-                return foundMyColorOpponent; // 自分の駒が見つかった
-            }
-            foundMyColorOpponent = true; // 相手の駒を発見
-            nx += dirX;
-            ny += dirY;
-        }
-        return false;
-    }
-    // 正しい位置に置いているかの判定
-    bool canPut(vector<vector<int>> inBoard) {
-        int temp = 0;
-        for(int i = 0; i<canFlip_koma.size(); i++){
-            if(inBoard[canFlip_koma[i].first][canFlip_koma[i].second] == Colorturn){
-                perfectCoordinate = make_pair(canFlip_koma[i].first, canFlip_koma[i].second);
-                temp++;
-            }
-            
-        }
-        if(temp == 1){
-            return true;
-        }
-        return false;
-    }
-
-    //理想の盤面の作成
-    void CreatePerfectBoard(vector<vector<int>> inBoard){
-        if (perfectBoard.empty()) {
-            perfectBoard = inBoard;
-        }
-        //if(canPut(inBoard)){
-            //perfectBoard = inBoard;
-            perfectBoard[perfectCoordinate.first][perfectCoordinate.second] = Colorturn;
-            for(int i = 0; i < 8; i++){
-                if(canFlipDirection(inBoard, perfectCoordinate.first, perfectCoordinate.second, dx[i], dy[i])){
-                    flipDirection(perfectCoordinate.first, perfectCoordinate.second, dx[i], dy[i], Colorturn);
+        bool isPut(const vector<vector<int>>& inBoard) {
+            int count = 0;
+            for(int i = 0; i < canFlipStones.size(); i++){
+                if(inBoard[canFlipStones[i].first][canFlipStones[i].second] == Colorturn){
+                    putPos = canFlipStones[i];
+                    count++;
                 }
             }
-            
-        //}
-       
-    }
+            return count == 1;
+        }
 
-
-
-
-    
-    //ひっくりかえし切れたかの判定(Colorturnを変える処理も含む)
-    bool ReverceAll(vector<vector<int>> inBoard,int Colorturn) {
-        int temp = 0;
-        for(int i = 0; i < 8; i++){
-            for(int j = 0; j < 8; j++){
-                if(inBoard[i][j] == perfectBoard[i][j]){
-                    temp++;
-                }else{
-                    outBoard[i][j] = 3;
+        void putAndFlip() {
+            board[putPos.first][putPos.second] = Colorturn;
+            int nx,ny;
+            for (int i = 0; i < 8; i++) {
+                nx = putPos.first + dx[i], ny = putPos.second + dy[i];
+                for (int j = 0; board[nx][ny] == (3 - Colorturn) && j < 7; j++) {
+                    board[nx][ny] = Colorturn;
+                    nx += dx[i];
+                    ny += dy[i];
                 }
             }
         }
-        if(temp == 64){
-        initializeoutBoard();
-        changeColor();
-            return true;
+
+        vector<vector<int>> diff(const vector<vector<int>>& inBoard) {
+            vector<vector<int>> diffBoard(8,vector<int>(8,0));
+            int diffCount = 0;
+            for (int i = 0; i < 8; i++) {
+                for (int j = 0; j < 8; j++) {
+                    if (board[i][j] != inBoard[i][j]) {
+                        diffBoard[i][j] = 3;
+                        diffCount++;
+                    }
+                }
+            }
+            if (diffCount) {
+                return diffBoard;
+            } else {
+                changeColor();
+                return canFlipArea(inBoard);
+            }
         }
-        
-        return false;
-       
-    }
 
+    public:
+        Othello() : outBoard(8, vector<int>(8, 0)), board(0) { }
+        vector<vector<int>> outBoard;
 
+        void changeColor(){
+            Colorturn = 3 - Colorturn;
+        }
+
+        vector<vector<int>> main(const vector<vector<int>>& inBoard, const bool& force = 0) {
+            outBoard = vector<vector<int>>(8, vector<int>(8, 0));
+            if (board.empty()) {
+                board = inBoard;
+            }
+            outBoard = canFlipArea(inBoard);
+            if (putPos.first == -1 || force) {
+                if (isPut(inBoard)) putAndFlip();
+            } else {
+                outBoard = diff(inBoard);
+            }
+            return outBoard;
+        }
 };
 
 #endif // Othello_hpp
