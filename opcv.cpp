@@ -173,9 +173,9 @@ cv::Mat analyzeOthelloBoard(cv::Mat& frame, cv::Mat& boardImg, const bool& force
         for (int i = 0; i < 8; i++) for (int j = 0; j < 8; j++) {
             if (displayBoard[i][j] == 1) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(255, 0, 0), 1);
             if (displayBoard[i][j] == 2) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(0, 0, 255), 1);
-            if (displayBoard[i][j] == 3) cv::circle(result, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(0, 255, 0), -1);
-            if (displayBoard[i][j] == 4) cv::circle(result, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(127, 127, 127), -1);
-            if (displayBoard[i][j] == 5) cv::circle(result, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(255, 255, 255), -1);
+            if (displayBoard[i][j] == 3) cv::circle(result, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 16, cv::Scalar(0, 255, 0), 1);
+            if (displayBoard[i][j] == 4) cv::circle(result, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 16, cv::Scalar(255, 0, 0), 1);
+            if (displayBoard[i][j] == 5) cv::circle(result, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 16, cv::Scalar(0, 0, 255), 1);
             // if (displayBoard[i][j] == 3) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(0, 255, 0), 1);
             // if (displayBoard[i][j] == 4) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(127, 127, 127), 1);
             // if (displayBoard[i][j] == 5) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(255, 255, 255), 1);
