@@ -15,6 +15,7 @@ class Othello {
         int diffCount = 0;
         bool ok = true;
 
+        // 指定された方向に石をひっくり返せるかどうかを確認する関数
         bool canFlipDirection(const vector<vector<int>>& inBoard, const int& x, const int& y, const int& dirX, const int& dirY) {
             int nx = x + dirX, ny = y + dirY;
             bool foundMyColorOpponent = false;
@@ -33,6 +34,7 @@ class Othello {
             return false;
         }
 
+        // ひっくり返せる石の位置を返し、リストに追加する
         vector<vector<int>> canFlipArea() {
             vector<vector<int>> result(8, vector<int>(8, 0));
             canFlipStones = {};
@@ -51,7 +53,8 @@ class Othello {
             }
             return result;
         }
-        
+
+        // 石を置けるかどうかを確認する関数
         bool isPut(const vector<vector<int>>& inBoard) {
             putPos = {};
             for (pair<int, int> p:canFlipStones) {
@@ -62,6 +65,7 @@ class Othello {
             return putPos.size() == 1;
         }
 
+        // 石を置いてひっくり返す関数
         void putAndFlip() {
             board[putPos[0].first][putPos[0].second] = turn;
             int nx,ny;
@@ -76,6 +80,7 @@ class Othello {
             }
         }
 
+        // 盤面の差分を返す
         vector<vector<int>> diff(const vector<vector<int>>& inBoard) {
             vector<vector<int>> diffBoard(8,vector<int>(8,0));
             diffCount = 0;
@@ -87,7 +92,8 @@ class Othello {
             }
             return diffBoard;
         }
-        
+
+        // ターンを変更する
         void changeColor() {
             for (int i = 0; i < 3; i++) {
                 turn = 3 - turn;
@@ -101,9 +107,11 @@ class Othello {
         Othello(){}
         bool finish = false;
 
+        // メインの処理を行う関数
         vector<vector<int>> main(const vector<vector<int>>& inBoard, const bool& force = 0) {
             outBoard = vector<vector<int>>(8, vector<int>(8, 0));
             if(force) {
+                finish = false;
                 board = inBoard;
                 changeColor();
                 // outBoard = canFlipArea();
