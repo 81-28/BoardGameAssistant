@@ -16,9 +16,7 @@ const cv::Scalar lowerWhite(0, 0, 192), upperWhite(255, 95, 255);
 // 切り取った正方形の一辺
 const int len = 160;
 // 盤面情報の記録 0:無,1:黒,2:白
-std::vector<std::vector<int>> board;
-std::vector<std::vector<int>> moves(8, std::vector<int>(8, 0));
-std::vector<std::pair<int, int>> movePlace;
+std::vector<std::vector<int>> dusplayBoard(8, std::vector<int>(8, 0));
 
 Othello othello;
 
@@ -52,12 +50,12 @@ int player = 1;
 //}
 
 //void findMoves(const int& color) {
-//    moves = std::vector<std::vector<int>>(8, std::vector<int>(8, 0));
+//    dusplayBoard = std::vector<std::vector<int>>(8, std::vector<int>(8, 0));
 //    movePlace = std::vector<std::pair<int, int>>(0);
 //    for (int x = 0; x < 8; x++) {
 //        for (int y = 0; y < 8; y++) {
 //            if (!board[x][y] && canFlip(x,y,color)) {
-//                moves[x][y] = color;
+//                dusplayBoard[x][y] = color;
 //                movePlace.push_back({ x,y });
 //            }
 //        }
@@ -273,8 +271,8 @@ cv::Mat analyzeOthelloBoard(cv::Mat& frame, cv::Mat& boardImg, const bool& force
 
     //checkBoard(newBoard, force);
     // othello.CreatePerfectBoard(newBoard);
-    // moves = othello.outBoard;
-    moves = othello.main(newBoard,force);
+    // dusplayBoard = othello.outBoard;
+    dusplayBoard = othello.main(newBoard,force);
 
 
     // 枠線を元の画像に描画
@@ -284,15 +282,16 @@ cv::Mat analyzeOthelloBoard(cv::Mat& frame, cv::Mat& boardImg, const bool& force
     // 描画
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
-            if (moves[i][j]) {
-                if (moves[i][j] == 1) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(255, 0, 0), 1);
-                if (moves[i][j] == 2) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(0, 0, 255), 1);
-                if (moves[i][j] == 3) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(255, 0, 255), 1);
-            }
-            //else {
-            //    if (moves[i][j] == 1) cv::circle(warpedBoard, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(255, 0, 0), -1);
-            //    else cv::circle(warpedBoard, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(0, 0, 255), -1);
-            //}
+            if (dusplayBoard[i][j] == 1) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(255, 0, 0), 1);
+            if (dusplayBoard[i][j] == 2) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(0, 0, 255), 1);
+            if (dusplayBoard[i][j] == 3) cv::circle(result, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(0, 255, 0), -1);
+            if (dusplayBoard[i][j] == 4) cv::circle(result, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(127, 127, 127), -1);
+            if (dusplayBoard[i][j] == 5) cv::circle(result, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(255, 255, 255), -1);
+            // if (dusplayBoard[i][j] == 4) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(0, 255, 0), 1);
+            // if (dusplayBoard[i][j] == 4) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(127, 127, 127), 1);
+            // if (dusplayBoard[i][j] == 5) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(255, 255, 255), 1);
+            if (newBoard[i][j] == 1) cv::circle(warpedBoard, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(255, 0, 0), -1);
+            if (newBoard[i][j] == 2) cv::circle(warpedBoard, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(0, 0, 255), -1);
         }
     }
     cv::resize(warpedBoard, warpedBoard, cv::Size(), lenMag, lenMag);
