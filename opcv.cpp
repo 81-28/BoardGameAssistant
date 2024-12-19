@@ -11,6 +11,7 @@ const cv::Scalar lowerBlack(0, 0, 0), upperBlack(255, 191, 191);
 const cv::Scalar lowerWhite(0, 0, 192), upperWhite(255, 95, 255);
 // 盤面の輪郭の座標
 std::vector<cv::Point> boardContour;
+//std::vector<cv::Point> boardContour = { cv::Point(20,10),cv::Point(100,10),cv::Point(110,90),cv::Point(10,90) };
 // 切り取った正方形の一辺
 const int len = 160;
 // 盤面情報 0:無,1:黒,2:白,3:無にすべき,4:黒にすべき,5:白にすべき
@@ -176,9 +177,6 @@ cv::Mat analyzeOthelloBoard(cv::Mat& frame, cv::Mat& boardImg, const bool& force
             if (displayBoard[i][j] == 3) cv::circle(result, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 16, cv::Scalar(0, 255, 0), 1);
             if (displayBoard[i][j] == 4) cv::circle(result, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 16, cv::Scalar(255, 0, 0), 1);
             if (displayBoard[i][j] == 5) cv::circle(result, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 16, cv::Scalar(0, 0, 255), 1);
-            // if (displayBoard[i][j] == 3) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(0, 255, 0), 1);
-            // if (displayBoard[i][j] == 4) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(127, 127, 127), 1);
-            // if (displayBoard[i][j] == 5) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(255, 255, 255), 1);
         }
     }
 
