@@ -14,7 +14,7 @@ std::vector<cv::Point> boardContour;
 // 切り取った正方形の一辺
 const int len = 160;
 // 盤面情報 0:無,1:黒,2:白,3:無にすべき,4:黒にすべき,5:白にすべき
-std::vector<std::vector<int>> dusplayBoard(8, std::vector<int>(8, 0));
+std::vector<std::vector<int>> displayBoard(8, std::vector<int>(8, 0));
 // オセロの情報,処理を行うクラス
 Othello othello;
 
@@ -39,7 +39,7 @@ void detectBoard(cv::Mat& frame) {
     std::vector<std::vector<cv::Point>> contours;
     cv::findContours(edges, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
     std::vector<cv::Point> newBoardContour;
-    for (const auto& contour : contours) {
+    for (const std::vector<cv::Point>& contour : contours) {
         std::vector<cv::Point> approx;
         cv::approxPolyDP(contour, approx, 0.01 * cv::arcLength(contour, true), true);
         if (approx.size() == 4) {
@@ -82,7 +82,7 @@ cv::Mat analyzeOthelloBoard(cv::Mat& frame, cv::Mat& boardImg, const bool& force
     cv::Mat hsv;
     // 盤面を正面から見たように変換
     std::vector<cv::Point2f> srcPoints, dstPoints;
-    for (const auto& point : boardContour) {
+    for (const cv::Point& point : boardContour) {
         srcPoints.push_back(cv::Point2f(point.x * mag, point.y * mag));
     }
     dstPoints = { {0, 0}, {len, 0}, {len, len}, {0, len} };
@@ -98,8 +98,8 @@ cv::Mat analyzeOthelloBoard(cv::Mat& frame, cv::Mat& boardImg, const bool& force
     cv::Mat black, white;
     cv::inRange(hsv, lowerBlack, upperBlack, black);
     cv::inRange(hsv, lowerWhite, upperWhite, white);
-    cv::imshow("B", black);
-    cv::imshow("W", white);
+    //cv::imshow("B", black);
+    //cv::imshow("W", white);
 
 
     // 距離変換を適用して石の中心を検出
@@ -124,7 +124,7 @@ cv::Mat analyzeOthelloBoard(cv::Mat& frame, cv::Mat& boardImg, const bool& force
 
     int blackStones = 0, whiteStones = 0;
     std::vector<std::vector<int>> newBoard(8, std::vector<int>(8, 0));
-    for (const auto& contour : peakContours) {
+    for (const std::vector<cv::Point>& contour : peakContours) {
         // 各極大点の重心を計算
         cv::Moments m = cv::moments(contour);
         if (m.m00 > 0) {
@@ -147,7 +147,7 @@ cv::Mat analyzeOthelloBoard(cv::Mat& frame, cv::Mat& boardImg, const bool& force
                     newBoard[cx / (len / 8)][cy / (len / 8)] = 1;
                     blackStones++;
                 }
-                cv::circle(warpedBoard, cv::Point(cx, cy), 1, stoneColor , -1);
+                cv::circle(warpedBoard, cv::Point(cx, cy), 1, stoneColor, -1);
             } else {
                 std::cerr << "cellPos is out of bounds: " << cellPos << std::endl;
             }
@@ -155,10 +155,10 @@ cv::Mat analyzeOthelloBoard(cv::Mat& frame, cv::Mat& boardImg, const bool& force
     }
 
     // オセロの処理
-    dusplayBoard = othello.main(newBoard,force);
+    displayBoard = othello.main(newBoard,force);
     // 終了判定
     if (othello.finish) {
-        string text = "Black: " + to_string(blackStones) + " White: " + to_string(whiteStones);
+        std::string text = "Black: " + to_string(blackStones) + " White: " + to_string(whiteStones);
         cv::putText(result, text, cv::Point(10, len/3), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
         if (blackStones == whiteStones) {
             text = " Draw";
@@ -168,28 +168,28 @@ cv::Mat analyzeOthelloBoard(cv::Mat& frame, cv::Mat& boardImg, const bool& force
             text = " White Won";
         }
         cv::putText(result, text, cv::Point(10, len*2/3), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
-        cv::resize(result, result, cv::Size(), lenMag, lenMag);
-        return result;
+    } else {
+        // アシストを描画
+        for (int i = 0; i < 8; i++) for (int j = 0; j < 8; j++) {
+            if (displayBoard[i][j] == 1) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(255, 0, 0), 1);
+            if (displayBoard[i][j] == 2) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(0, 0, 255), 1);
+            if (displayBoard[i][j] == 3) cv::circle(result, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(0, 255, 0), -1);
+            if (displayBoard[i][j] == 4) cv::circle(result, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(127, 127, 127), -1);
+            if (displayBoard[i][j] == 5) cv::circle(result, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(255, 255, 255), -1);
+            // if (displayBoard[i][j] == 3) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(0, 255, 0), 1);
+            // if (displayBoard[i][j] == 4) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(127, 127, 127), 1);
+            // if (displayBoard[i][j] == 5) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(255, 255, 255), 1);
+        }
     }
 
     // 枠線を元の画像に描画
-    for (size_t i = 0; i < boardContour.size(); ++i) {
+    for (int i = 0; i < 4; i++) {
         cv::line(frame, boardContour[i] * mag, boardContour[(i + 1) % boardContour.size()] * mag, cv::Scalar(0, 255, 0), 2);
     }
-    // アシストを描画
-    for (int i = 0; i < 8; i++) {
-        for (int j = 0; j < 8; j++) {
-            if (dusplayBoard[i][j] == 1) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(255, 0, 0), 1);
-            if (dusplayBoard[i][j] == 2) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(0, 0, 255), 1);
-            if (dusplayBoard[i][j] == 3) cv::circle(result, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(0, 255, 0), -1);
-            if (dusplayBoard[i][j] == 4) cv::circle(result, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(127, 127, 127), -1);
-            if (dusplayBoard[i][j] == 5) cv::circle(result, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(255, 255, 255), -1);
-            // if (dusplayBoard[i][j] == 3) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(0, 255, 0), 1);
-            // if (dusplayBoard[i][j] == 4) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(127, 127, 127), 1);
-            // if (dusplayBoard[i][j] == 5) cv::rectangle(result, cv::Point(i * len / 8 + padding, j * len / 8 + padding), cv::Point((i + 1) * len / 8 - padding, (j + 1) * len / 8 - padding), cv::Scalar(255, 255, 255), 1);
-            // if (newBoard[i][j] == 1) cv::circle(warpedBoard, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(255, 0, 0), -1);
-            // if (newBoard[i][j] == 2) cv::circle(warpedBoard, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(0, 0, 255), -1);
-        }
+    // 認識した石を描画
+    for (int i = 0; i < 8; i++) for (int j = 0; j < 8; j++) {
+        if (newBoard[i][j] == 1) cv::circle(warpedBoard, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(255, 0, 0), -1);
+        if (newBoard[i][j] == 2) cv::circle(warpedBoard, cv::Point(i * len / 8 + len / 16, j * len / 8 + len / 16), len / 32, cv::Scalar(0, 0, 255), -1);
     }
     cv::resize(warpedBoard, warpedBoard, cv::Size(), lenMag, lenMag);
     cv::imshow("square", warpedBoard);
@@ -241,7 +241,6 @@ int main() {
 
     return 0;
 }
-
 
 
 #include <opencv2/core/version.hpp>
